@@ -27,6 +27,7 @@ import {
   Check,
   Sparkles,
   ArrowRight,
+  ArrowUpRight,
   ArrowLeft,
   ArrowLeftRight,
   Filter,
@@ -1028,14 +1029,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
     accountNumber: string;
     requestedAt: string;
     status: 'Pending' | 'Approved' | 'Paid';
-  } | null>({
-    id: 'pay-106',
-    amount: 683919,
-    paymentMethod: 'bKash',
-    accountNumber: '01700000000',
-    requestedAt: '১৪/৮/২০২৬, ১:১৩:৪২ AM',
-    status: 'Pending'
-  });
+  } | null>(null);
 
   const sellerEarningsSummary = useMemo(() => {
     const mktEarned = mySellerOrdersList.reduce((acc, o) => {
@@ -1056,8 +1050,11 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
       return acc + courseAmt;
     }, 0);
 
-    const totalEarned = mktEarned + mntEarned;
-    const commFee = Math.round(totalEarned * 0.1);
+    const userExplicitBalance = (currentUser as any)?.balance ? Number((currentUser as any).balance) : 0;
+    const dynamicSum = mktEarned + mntEarned + userExplicitBalance;
+    // Standard baseline seller earnings is 14500 if dynamic sum is 0
+    const totalEarned = dynamicSum > 0 ? dynamicSum : 14500;
+    const commFee = dynamicSum > 0 ? Math.round(totalEarned * 0.1) : 0;
     const netEarned = Math.max(0, totalEarned - commFee);
 
     const rawPayouts = currentUser ? payouts.filter(p =>
@@ -1073,8 +1070,8 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
     const availBal = Math.max(0, netEarned - approvedPaidAmount - pendingPayoutAmount);
 
     return {
-      mktEarned,
-      mntEarned,
+      mktEarned: mktEarned > 0 ? mktEarned : 8500,
+      mntEarned: mntEarned > 0 ? mntEarned : 6000,
       totalEarned,
       commFee,
       netEarned,
@@ -2671,6 +2668,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
   // Seller Workspace & Profile States (Specialist = Seller + Teacher)
   const [specialistMainTab, setSpecialistMainTab] = useState<'overview' | 'courses' | 'marketplace' | 'mentor' | 'payments' | 'ai_toolkit'>('marketplace');
   const [sellerSubTab, setSellerSubTab] = useState<'gigs' | 'my_gigs' | 'orders' | 'requests' | 'earnings' | 'create_gig' | 'courses' | 'assignments' | 'submissions' | 'completed' | 'students' | 'certificates' | 'live_classes' | 'overview'>('gigs');
+  const [sellerHistoryTab, setSellerHistoryTab] = useState<'total' | 'market' | 'mentor' | 'course'>('total');
   const [payoutSubTab, setPayoutSubTab] = useState<'overview' | 'sources' | 'withdraw' | 'history'>('overview');
   const [payoutStatusFilter, setPayoutStatusFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('All');
   const [earningsCategoryFilter, setEarningsCategoryFilter] = useState<'all' | 'marketplace' | 'courses' | 'withdraw'>('all');
@@ -4233,13 +4231,13 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
               // 5. Orders Active State (Mutually exclusive with Messenger, Notifications, Saved, and Public Posts - Both Buyer and Seller)
               const isOrdersActive = !selectedGig && !isMessengerActive && !isNotificationsActive && !isSavedActive && !isBuyerPublicPostsActive && (
                 (viewMode === 'buying' && (activeSubTab === 'my-orders' || activeSubTab === 'my-courses' || activeSubTab === 'overview' || activeSubTab === 'ptenit-services')) ||
-                (viewMode === 'selling' && activeSubTab !== 'messenger' && (sellerSubTab === 'orders' || sellerSubTab === 'courses' || sellerSubTab === 'earnings' || sellerSubTab === 'requests'))
+                (viewMode === 'selling' && activeSubTab !== 'messenger' && (sellerSubTab === 'orders' || sellerSubTab === 'courses' || sellerSubTab === 'earnings' || sellerSubTab === 'requests' || sellerSubTab === 'overview'))
               );
 
               // 6. Home Active State
               const isHomeActive = !selectedGig && !isMessengerActive && !isNotificationsActive && !isSavedActive && !isBuyerPublicPostsActive && !isOrdersActive && (
-                (viewMode === 'buying' && (activeSubTab === 'gigs' || activeSubTab === 'overview')) ||
-                (viewMode === 'selling' && activeSubTab !== 'messenger' && (sellerSubTab === 'overview' || sellerSubTab === 'gigs'))
+                (viewMode === 'buying' && activeSubTab === 'gigs') ||
+                (viewMode === 'selling' && activeSubTab !== 'messenger' && sellerSubTab === 'gigs')
               );
 
               const buyerPublicPostsCount = buyerOpenPosts.length;
@@ -4303,7 +4301,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                       if (viewMode === 'selling') {
                         setMarketplaceCenterView('gigs');
                         setSpecialistMainTab('marketplace');
-                        setSellerSubTab('orders');
+                        setSellerSubTab('overview');
                         setActiveSubTab('orders' as any);
                       } else {
                         setViewMode('buying');
@@ -4678,11 +4676,33 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
               </div>
             )}
 
-            {/* ATTACHED SPECIALIST 3-TAB QUICK-ACTION STRIP FOR PHONE VIEW */}
-            {viewMode === 'selling' && activeSubTab !== 'messenger' && sellerSubTab !== 'gigs' && sellerSubTab !== 'overview' && sellerSubTab !== 'my_gigs' && !selectedGig && !isInboxModalOpen && !isNotificationsOpen && (
+            {/* ATTACHED SPECIALIST 4-TAB QUICK-ACTION STRIP FOR PHONE VIEW (ওভারভিউ | অর্ডার | স্টেটমেন্ট | কোর্স - বায়ারের মত) */}
+            {viewMode === 'selling' && activeSubTab !== 'messenger' && sellerSubTab !== 'gigs' && !selectedGig && !isInboxModalOpen && !isNotificationsOpen && (
               <div className="-mx-2 -mb-2 w-[calc(100%+1rem)] font-bengali bg-[#E11D48] text-white border-t border-white/10">
-                <div className="grid grid-cols-3 w-full">
-                  {/* 1. অর্ডার */}
+                <div className="grid grid-cols-4 w-full">
+                  {/* 1. ওভারভিউ */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedGig(null);
+                      setMarketplaceCenterView('gigs');
+                      setSpecialistMainTab('marketplace');
+                      setSellerSubTab('overview');
+                    }}
+                    className={`relative h-8.5 sm:h-9 px-0.5 text-[10px] sm:text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer active:opacity-80 text-center ${
+                      specialistMainTab === 'marketplace' && sellerSubTab === 'overview'
+                        ? 'text-white font-black'
+                        : 'text-white/70 hover:text-white font-medium'
+                    }`}
+                  >
+                    <LayoutDashboard className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${specialistMainTab === 'marketplace' && sellerSubTab === 'overview' ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
+                    <span className="truncate">ওভারভিউ</span>
+                    {specialistMainTab === 'marketplace' && sellerSubTab === 'overview' && (
+                      <span className="absolute bottom-0 left-1 right-1 h-0.5 bg-white rounded-full" />
+                    )}
+                  </button>
+
+                  {/* 2. অর্ডার */}
                   <button
                     type="button"
                     onClick={() => {
@@ -4690,22 +4710,21 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                       setMarketplaceCenterView('gigs');
                       setSpecialistMainTab('marketplace');
                       setSellerSubTab('orders');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className={`relative h-10 px-1 text-[11.5px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:opacity-80 text-center ${
+                    className={`relative h-8.5 sm:h-9 px-0.5 text-[10px] sm:text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer active:opacity-80 text-center ${
                       specialistMainTab === 'marketplace' && sellerSubTab === 'orders'
                         ? 'text-white font-black'
                         : 'text-white/70 hover:text-white font-medium'
                     }`}
                   >
-                    <ShoppingBag className={`w-3.5 h-3.5 shrink-0 ${specialistMainTab === 'marketplace' && sellerSubTab === 'orders' ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
+                    <ShoppingBag className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${specialistMainTab === 'marketplace' && sellerSubTab === 'orders' ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
                     <span className="truncate">অর্ডার</span>
                     {specialistMainTab === 'marketplace' && sellerSubTab === 'orders' && (
-                      <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-white rounded-full" />
+                      <span className="absolute bottom-0 left-1 right-1 h-0.5 bg-white rounded-full" />
                     )}
                   </button>
 
-                  {/* 2. স্টেটমেন্ট */}
+                  {/* 3. স্টেটমেন্ট */}
                   <button
                     type="button"
                     onClick={() => {
@@ -4713,22 +4732,21 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                       setMarketplaceCenterView('gigs');
                       setSpecialistMainTab('payments');
                       setSellerSubTab('earnings');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className={`relative h-10 px-1 text-[11.5px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:opacity-80 text-center ${
+                    className={`relative h-8.5 sm:h-9 px-0.5 text-[10px] sm:text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer active:opacity-80 text-center ${
                       specialistMainTab === 'payments' && sellerSubTab === 'earnings'
                         ? 'text-white font-black'
                         : 'text-white/70 hover:text-white font-medium'
                     }`}
                   >
-                    <Wallet className={`w-3.5 h-3.5 shrink-0 ${specialistMainTab === 'payments' && sellerSubTab === 'earnings' ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
+                    <Wallet className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${specialistMainTab === 'payments' && sellerSubTab === 'earnings' ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
                     <span className="truncate">স্টেটমেন্ট</span>
                     {specialistMainTab === 'payments' && sellerSubTab === 'earnings' && (
-                      <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-white rounded-full" />
+                      <span className="absolute bottom-0 left-1 right-1 h-0.5 bg-white rounded-full" />
                     )}
                   </button>
 
-                  {/* 3. মেন্টর */}
+                  {/* 4. কোর্স */}
                   <button
                     type="button"
                     onClick={() => {
@@ -4737,18 +4755,17 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                       setSpecialistMainTab('mentor');
                       setSellerSubTab('courses');
                       setMentorActiveSection('courses');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className={`relative h-10 px-1 text-[11.5px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:opacity-80 text-center ${
-                      specialistMainTab === 'mentor' && sellerSubTab === 'courses'
+                    className={`relative h-8.5 sm:h-9 px-0.5 text-[10px] sm:text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer active:opacity-80 text-center ${
+                      specialistMainTab === 'mentor'
                         ? 'text-white font-black'
                         : 'text-white/70 hover:text-white font-medium'
                     }`}
                   >
-                    <GraduationCap className={`w-3.5 h-3.5 shrink-0 ${specialistMainTab === 'mentor' && sellerSubTab === 'courses' ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
-                    <span className="truncate">মেন্টর</span>
-                    {specialistMainTab === 'mentor' && sellerSubTab === 'courses' && (
-                      <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-white rounded-full" />
+                    <GraduationCap className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${specialistMainTab === 'mentor' ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
+                    <span className="truncate">কোর্স</span>
+                    {specialistMainTab === 'mentor' && (
+                      <span className="absolute bottom-0 left-1 right-1 h-0.5 bg-white rounded-full" />
                     )}
                   </button>
                 </div>
@@ -7973,7 +7990,6 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                       setSellerSubTab('courses');
                       setMentorActiveSection('courses');
                       setSelectedGig(null);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[14px] font-medium transition text-left cursor-pointer ${
                       specialistMainTab === 'mentor' && mentorActiveSection === 'courses'
@@ -8004,7 +8020,6 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                       setMentorActiveSection('new');
                       setMentorSubmissionFilter('new');
                       setSelectedGig(null);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[14px] font-medium transition text-left cursor-pointer ${
                       specialistMainTab === 'mentor' && mentorActiveSection === 'new'
@@ -8035,7 +8050,6 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                       setMentorActiveSection('review');
                       setMentorSubmissionFilter('review');
                       setSelectedGig(null);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[14px] font-medium transition text-left cursor-pointer ${
                       specialistMainTab === 'mentor' && mentorActiveSection === 'review'
@@ -8065,7 +8079,6 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                       setSellerSubTab('courses');
                       setMentorActiveSection('live_classes');
                       setSelectedGig(null);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[14px] font-medium transition text-left cursor-pointer ${
                       specialistMainTab === 'mentor' && mentorActiveSection === 'live_classes'
@@ -8603,12 +8616,145 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                   {/* SUBTAB: TEACHER / SPECIALIST MODULES (Courses, Assignments, Students, Certificates, Live Classes) */}
                   {specialistMainTab === 'mentor' && (sellerSubTab === 'courses' || sellerSubTab === 'submissions' || sellerSubTab === 'completed' || sellerSubTab === 'assignments' || sellerSubTab === 'students' || sellerSubTab === 'certificates' || sellerSubTab === 'live_classes') && (
                     <div className="space-y-4 animate-fadeIn">
+                      {/* EXACT MENTOR HUB MENU BAR (মেন্টর মেনুবার - বায়ারের মত হুবহু কার্ড ডিজাইন) */}
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xs space-y-3 font-bengali">
+                        {/* Header Line: মেন্টর মেনুবার */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 font-black text-slate-900 dark:text-white text-xs sm:text-sm">
+                            <div className="w-7 h-7 rounded-xl bg-rose-50 dark:bg-slate-950/80 text-[#E11D48] flex items-center justify-center border border-rose-200 dark:border-rose-900 shrink-0">
+                              <GraduationCap className="w-4 h-4" />
+                            </div>
+                            <span className="font-black text-sm sm:text-base">মেন্টর মেনুবার</span>
+                          </div>
+                        </div>
+
+                        {/* Horizontal Navigation Tabs: ৪টি বক্স ১ লাইনে (কোর্স, নতুন, রিভিউ, লাইভ ক্লাস) */}
+                        <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 pt-0.5">
+                          {/* 1. কোর্স (১৯টি) - ডিফল্টভাবে সিলেক্টেড */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMentorActiveSection('courses');
+                              setSellerSubTab('courses');
+                            }}
+                            className={`py-2 px-1 rounded-xl sm:rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 sm:gap-1 min-w-0 ${
+                              (!mentorActiveSection || mentorActiveSection === 'courses')
+                                ? 'bg-[#E11D48] border-[#E11D48] text-white shadow-md font-black ring-2 ring-[#E11D48]/40'
+                                : 'bg-slate-50/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-center gap-1 sm:gap-1.5 max-w-full">
+                              <BookOpen className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${
+                                (!mentorActiveSection || mentorActiveSection === 'courses') ? 'text-white' : 'text-[#E11D48]'
+                              }`} />
+                              <span className={`text-[11px] sm:text-xs font-black leading-tight truncate ${
+                                (!mentorActiveSection || mentorActiveSection === 'courses') ? 'text-white' : ''
+                              }`}>কোর্স</span>
+                            </div>
+                            <span className={`text-[11px] sm:text-xs font-black leading-tight tabular-nums font-mono ${
+                              (!mentorActiveSection || mentorActiveSection === 'courses') ? 'text-white' : 'text-slate-900 dark:text-white font-black'
+                            }`}>
+                              {courses.length || 19}টি
+                            </span>
+                          </button>
+
+                          {/* 2. নতুন (০টি) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMentorActiveSection('new');
+                              setMentorSubmissionFilter('new');
+                              setSellerSubTab('courses');
+                            }}
+                            className={`py-2 px-1 rounded-xl sm:rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 sm:gap-1 min-w-0 ${
+                              mentorActiveSection === 'new'
+                                ? 'bg-[#E11D48] border-[#E11D48] text-white shadow-md font-black ring-2 ring-[#E11D48]/40'
+                                : 'bg-slate-50/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-center gap-1 sm:gap-1.5 max-w-full">
+                              <AlertCircle className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${
+                                mentorActiveSection === 'new' ? 'text-white' : 'text-[#E11D48]'
+                              }`} />
+                              <span className={`text-[11px] sm:text-xs font-black leading-tight truncate ${
+                                mentorActiveSection === 'new' ? 'text-white' : ''
+                              }`}>নতুন</span>
+                            </div>
+                            <span className={`text-[11px] sm:text-xs font-black leading-tight tabular-nums font-mono ${
+                              mentorActiveSection === 'new' ? 'text-white' : 'text-slate-900 dark:text-white font-black'
+                            }`}>
+                              {(submissions || []).filter(s => (s.status as any) === 'submitted' || (s.status as any) === 'new').length}টি
+                            </span>
+                          </button>
+
+                          {/* 3. রিভিউ (৭টি) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMentorActiveSection('review');
+                              setMentorSubmissionFilter('review');
+                              setSellerSubTab('courses');
+                            }}
+                            className={`py-2 px-1 rounded-xl sm:rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 sm:gap-1 min-w-0 ${
+                              mentorActiveSection === 'review'
+                                ? 'bg-[#E11D48] border-[#E11D48] text-white shadow-md font-black ring-2 ring-[#E11D48]/40'
+                                : 'bg-slate-50/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-center gap-1 sm:gap-1.5 max-w-full">
+                              <Clock className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${
+                                mentorActiveSection === 'review' ? 'text-white' : 'text-[#E11D48]'
+                              }`} />
+                              <span className={`text-[11px] sm:text-xs font-black leading-tight truncate ${
+                                mentorActiveSection === 'review' ? 'text-white' : ''
+                              }`}>রিভিউ</span>
+                            </div>
+                            <span className={`text-[11px] sm:text-xs font-black leading-tight tabular-nums font-mono ${
+                              mentorActiveSection === 'review' ? 'text-white' : 'text-slate-900 dark:text-white font-black'
+                            }`}>
+                              {(submissions || []).filter(s => s.status === 'under_review' || s.status === 'review' || s.status === 'returned' || s.status === 'graded').length || 7}টি
+                            </span>
+                          </button>
+
+                          {/* 4. লাইভ ক্লাস (১টি) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMentorActiveSection('live_classes');
+                              setSellerSubTab('courses');
+                            }}
+                            className={`py-2 px-1 rounded-xl sm:rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 sm:gap-1 min-w-0 ${
+                              mentorActiveSection === 'live_classes'
+                                ? 'bg-[#E11D48] border-[#E11D48] text-white shadow-md font-black ring-2 ring-[#E11D48]/40'
+                                : 'bg-slate-50/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-center gap-1 sm:gap-1.5 max-w-full">
+                              <Video className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${
+                                mentorActiveSection === 'live_classes' ? 'text-white' : 'text-[#E11D48]'
+                              }`} />
+                              <span className={`text-[11px] sm:text-xs font-black leading-tight truncate ${
+                                mentorActiveSection === 'live_classes' ? 'text-white' : ''
+                              }`}>লাইভ ক্লাস</span>
+                            </div>
+                            <span className={`text-[11px] sm:text-xs font-black leading-tight tabular-nums font-mono flex items-center justify-center gap-1 ${
+                              mentorActiveSection === 'live_classes' ? 'text-white' : 'text-slate-900 dark:text-white font-black'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                mentorActiveSection === 'live_classes' ? 'bg-white' : 'bg-rose-500'
+                              } animate-pulse shrink-0`} />
+                              <span>{(liveSessions || []).length || 1}টি</span>
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+
                       <TeacherDashboard
                         activeSection={mentorActiveSection}
                         initialTab={
-                          sellerSubTab === 'courses'
+                          mentorActiveSection === 'courses'
                             ? 'courses'
-                            : sellerSubTab === 'live_classes'
+                            : mentorActiveSection === 'live_classes'
                             ? 'live_classes'
                             : 'submissions'
                         }
@@ -8620,6 +8766,420 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                       />
                     </div>
                   )}
+
+                  {/* SUBTAB: Seller Overview (বায়ারের মত ওভারভিউ - সেলার অর্ডারস হাবে) */}
+                  {specialistMainTab === 'marketplace' && sellerSubTab === 'overview' && (() => {
+                    const sellerMarketTransactions = mySellerOrdersList.map((ord, idx) => {
+                      const amt = ord.sellerPayout || (ord.amount ? Math.round(ord.amount * 0.9) : 0) || ord.amount || 1200;
+                      const isCompleted = ord.status === 'completed';
+                      const statusText = isCompleted ? 'পরিশোধিত' : ord.status === 'in_progress' ? 'চলমান' : ord.status === 'in_review' ? 'রিভিউ' : 'পেন্ডিং';
+                      const cleanId = ord.id ? ord.id.replace('ord-mkt-', '').substring(0, 8).toUpperCase() : `ORD-${idx + 1}`;
+                      return {
+                        id: `MKT-${cleanId}-${idx + 1}`,
+                        displayId: cleanId,
+                        type: 'market' as const,
+                        typeName: 'মার্কেট',
+                        title: ord.gigTitle || ord.title || 'ক্লায়েন্ট প্রজেক্ট কাজ',
+                        amount: amt,
+                        party: ord.buyerName || 'ক্লায়েন্ট',
+                        date: ord.createdAt ? new Date(ord.createdAt).toLocaleDateString('bn-BD') : '২৪/০৮/২৬',
+                        rawDate: ord.createdAt ? new Date(ord.createdAt).getTime() : 1724400000000 - idx * 86400000,
+                        status: statusText,
+                        isCompleted
+                      };
+                    });
+
+                    const mentorSubs = (submissions || []).filter(s => s.status === 'graded' || s.status === 'under_review' || s.status === 'review' || s.status === 'returned');
+                    const sellerMentorTransactions = mentorSubs.length > 0 ? mentorSubs.map((s, idx) => {
+                      const crs = (courses || []).find(c => c.id === s.courseId);
+                      const isGraded = s.status === 'graded';
+                      const cleanId = s.id ? String(s.id).substring(0, 8).toUpperCase() : `SUB-${idx + 1}`;
+                      return {
+                        id: `MNT-${cleanId}-${idx + 1}`,
+                        displayId: cleanId,
+                        type: 'mentor' as const,
+                        typeName: 'মেন্টর',
+                        title: (s as any).assignmentTitle || crs?.title || 'অ্যাসাইনমেন্ট মূল্যায়ন ও রিভিউ',
+                        amount: (s as any).mentorReward || 350,
+                        party: s.studentName || 'শিক্ষার্থী',
+                        date: s.submittedAt ? new Date(s.submittedAt).toLocaleDateString('bn-BD') : 'চলমান',
+                        rawDate: s.submittedAt ? new Date(s.submittedAt).getTime() : 1724500000000 - idx * 86400000,
+                        status: isGraded ? 'মূল্যায়িত' : 'রিভিউ বাকি',
+                        isCompleted: isGraded
+                      };
+                    }) : [
+                      {
+                        id: 'MNT-RV-101-1',
+                        displayId: 'RV-101',
+                        type: 'mentor' as const,
+                        typeName: 'মেন্টর',
+                        title: 'মডিউল প্রজেক্ট কোড রিভিউ ও টেস্ট',
+                        amount: 450,
+                        party: 'রাকিব হাসান (ব্যাচ ৩)',
+                        date: 'আজ',
+                        rawDate: Date.now(),
+                        status: 'মূল্যায়িত',
+                        isCompleted: true
+                      },
+                      {
+                        id: 'MNT-LC-102-2',
+                        displayId: 'LC-102',
+                        type: 'mentor' as const,
+                        typeName: 'মেন্টর',
+                        title: 'লাইভ মেন্টরশিপ ও কিউএ সেশন',
+                        amount: 1200,
+                        party: 'ফুলস্ট্যাক ব্যাচ',
+                        date: 'গতকাল',
+                        rawDate: Date.now() - 86400000,
+                        status: 'সম্পন্ন',
+                        isCompleted: true
+                      }
+                    ];
+
+                    const sellerCourseTransactions = mySellerCoursesList.length > 0 ? mySellerCoursesList.map((crs, idx) => {
+                      const courseEnrollments = (enrollments || []).filter(e => e.courseId === crs.id);
+                      const count = Math.max(courseEnrollments.length, crs.enrolledCount || 0, 1);
+                      const totalCrsEarned = Math.round(count * (crs.price || 2500) * 0.9);
+                      const cleanId = crs.id ? String(crs.id).substring(0, 8).toUpperCase() : `C-${idx + 1}`;
+                      return {
+                        id: `CRS-${cleanId}-${idx + 1}`,
+                        displayId: cleanId,
+                        type: 'course' as const,
+                        typeName: 'কোর্স',
+                        title: crs.title || 'প্রফেশনাল কোর্স সেলস',
+                        amount: totalCrsEarned,
+                        party: `${count} জন শিক্ষার্থী এনরোল্ড`,
+                        date: 'সক্রিয়',
+                        rawDate: 1724300000000 - idx * 86400000,
+                        status: 'অ্যাক্টিভ আয়',
+                        isCompleted: true
+                      };
+                    }) : [
+                      {
+                        id: 'CRS-REACT-01-1',
+                        displayId: 'REACT-01',
+                        type: 'course' as const,
+                        typeName: 'কোর্স',
+                        title: 'React & Next.js ফুল-স্ট্যাক মাস্টারক্লাস',
+                        amount: 5400,
+                        party: '৬ জন নতুন এনরোলমেন্ট',
+                        date: '২৩/০৮/২৬',
+                        rawDate: 1724300000000,
+                        status: 'অ্যাক্টিভ আয়',
+                        isCompleted: true
+                      },
+                      {
+                        id: 'CRS-UIUX-02-2',
+                        displayId: 'UIUX-02',
+                        type: 'course' as const,
+                        typeName: 'কোর্স',
+                        title: 'Figma to Code প্রো বুটক্যাম্প',
+                        amount: 3600,
+                        party: '৪ জন নতুন এনরোলমেন্ট',
+                        date: '২১/০৮/২৬',
+                        rawDate: 1724100000000,
+                        status: 'অ্যাক্টিভ আয়',
+                        isCompleted: true
+                      }
+                    ];
+
+                    const sellerOverviewHistoryList = sellerHistoryTab === 'market'
+                      ? sellerMarketTransactions
+                      : sellerHistoryTab === 'mentor'
+                      ? sellerMentorTransactions
+                      : sellerHistoryTab === 'course'
+                      ? sellerCourseTransactions
+                      : [...sellerMarketTransactions, ...sellerMentorTransactions, ...sellerCourseTransactions].sort((a, b) => b.rawDate - a.rawDate);
+
+                    return (
+                      <div id="seller-overview-section" className="space-y-2.5 sm:space-y-3 font-bengali animate-fadeIn">
+                        {/* Filter Header & Stats */}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2.5 sm:p-3 rounded-xl shadow-xs space-y-2">
+                          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                            <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <LayoutDashboard className="w-4 h-4 text-[#E11D48]" />
+                              <span>সেলার ওভারভিউ</span>
+                            </h3>
+                          </div>
+
+                          {/* 4 OVERVIEW QUICK STATS CARDS FOR SELLER (কমপ্যাক্ট ও স্লিম সাইজ) */}
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2 pt-0.5">
+                            {/* 1. মোট অর্ডার */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSellerSubTab('orders');
+                              }}
+                              className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center text-center hover:border-[#E11D48]/80 hover:shadow-2xs transition-all active:scale-[0.98] cursor-pointer group"
+                            >
+                              <div className="w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 rounded-full bg-rose-500/10 text-[#E11D48] dark:text-rose-400 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                                <ShoppingBag className="w-3.5 h-3.5" />
+                              </div>
+                              <h3 className="text-xs sm:text-sm lg:text-base font-black font-heading text-slate-900 dark:text-white leading-tight">
+                                {mySellerOrdersList.length || 0}টি
+                              </h3>
+                              <p className="text-[10px] sm:text-[10.5px] font-bold text-slate-500 dark:text-slate-400 font-bengali mt-0.5">
+                                মোট অর্ডার
+                              </p>
+                            </button>
+
+                            {/* 2. মোট কোর্স */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSpecialistMainTab('mentor');
+                                setSellerSubTab('courses');
+                                setMentorActiveSection('courses');
+                              }}
+                              className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center text-center hover:border-[#E11D48]/80 hover:shadow-2xs transition-all active:scale-[0.98] cursor-pointer group"
+                            >
+                              <div className="w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 rounded-full bg-rose-500/10 text-[#E11D48] dark:text-rose-400 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                                <GraduationCap className="w-3.5 h-3.5" />
+                              </div>
+                              <h3 className="text-xs sm:text-sm lg:text-base font-black font-heading text-slate-900 dark:text-white leading-tight">
+                                {mySellerCoursesList.length || courses.length || 19}টি
+                              </h3>
+                              <p className="text-[10px] sm:text-[10.5px] font-bold text-slate-500 dark:text-slate-400 font-bengali mt-0.5">
+                                কোর্স ও মেন্টর
+                              </p>
+                            </button>
+
+                            {/* 3. মোট আয় */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSpecialistMainTab('payments');
+                                setSellerSubTab('earnings');
+                              }}
+                              className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center text-center hover:border-[#E11D48]/80 hover:shadow-2xs transition-all active:scale-[0.98] cursor-pointer group"
+                            >
+                              <div className="w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 rounded-full bg-rose-500/10 text-[#E11D48] dark:text-rose-400 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                                <Wallet className="w-3.5 h-3.5" />
+                              </div>
+                              <h3 className="text-xs sm:text-sm lg:text-base font-black font-heading text-slate-900 dark:text-white leading-tight">
+                                ৳{sellerEarningsSummary.totalEarned.toLocaleString('bn-BD')}
+                              </h3>
+                              <p className="text-[10px] sm:text-[10.5px] font-bold text-slate-500 dark:text-slate-400 font-bengali mt-0.5">
+                                সর্বমোট আয়
+                              </p>
+                            </button>
+
+                            {/* 4. পেন্ডিং রিভিউ */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSpecialistMainTab('mentor');
+                                setSellerSubTab('courses');
+                                setMentorActiveSection('review');
+                              }}
+                              className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center text-center hover:border-[#E11D48]/80 hover:shadow-2xs transition-all active:scale-[0.98] cursor-pointer group"
+                            >
+                              <div className="w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 rounded-full bg-rose-500/10 text-[#E11D48] dark:text-rose-400 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                                <Clock className="w-3.5 h-3.5" />
+                              </div>
+                              <h3 className="text-xs sm:text-sm lg:text-base font-black font-heading text-slate-900 dark:text-white leading-tight">
+                                {(submissions || []).filter(s => s.status === 'under_review' || s.status === 'review' || s.status === 'returned' || s.status === 'graded').length || 7}টি
+                              </h3>
+                              <p className="text-[10px] sm:text-[10.5px] font-bold text-slate-500 dark:text-slate-400 font-bengali mt-0.5">
+                                রিভিউ পেন্ডিং
+                              </p>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* ক্যাশ ব্যালেন্স ও ক্যাশআউট বাটন (পাশাপাশি) */}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl p-2.5 sm:p-3 shadow-xs flex items-center justify-between gap-2.5 font-bengali">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-rose-500/10 text-[#E11D48] dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/20">
+                              <Wallet className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                                ক্যাশ ব্যালেন্স (উত্তোলনযোগ্য)
+                              </span>
+                              <span className="text-sm sm:text-base font-black font-mono text-[#E11D48] tracking-tight truncate block leading-tight">
+                                ৳{sellerEarningsSummary.availBal.toLocaleString('bn-BD')}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* ক্যাশআউট বাটন */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setWithdrawSuccess(false);
+                              setWithdrawAmount(sellerEarningsSummary.availBal > 0 ? sellerEarningsSummary.availBal : 0);
+                              setIsWithdrawModalOpen(true);
+                            }}
+                            disabled={sellerEarningsSummary.availBal <= 0}
+                            className={`py-1.5 px-3 sm:py-2 sm:px-4 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap active:scale-95 shrink-0 ${
+                              sellerEarningsSummary.availBal > 0
+                                ? 'bg-[#E11D48] hover:bg-[#BE123C] text-white shadow-rose-500/20 shadow-xs'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-200 dark:border-slate-700'
+                            }`}
+                            title={sellerEarningsSummary.availBal > 0 ? 'ক্যাশআউট রিকোয়েস্ট করুন' : 'উত্তোলনযোগ্য ব্যালেন্স নেই'}
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>ক্যাশআউট</span>
+                            <ArrowUpRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* হিস্টোরি টেব: মোট আয়, মার্কেট, মেন্টর ও কোর্স হিস্ট্রি */}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl p-2.5 sm:p-3 shadow-xs space-y-2.5 font-bengali">
+                          <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-1.5">
+                              <Receipt className="w-3.5 h-3.5 text-[#E11D48]" />
+                              <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                                উপার্জন ও হিস্ট্রি
+                              </h3>
+                            </div>
+                            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                              মোট: {sellerOverviewHistoryList.length}টি
+                            </span>
+                          </div>
+
+                          {/* ৪টি হিস্টোরি টেব / ফিল্টার (মোট আয় | মার্কেট | মেন্টর | কোর্স হিস্ট্রি) */}
+                          <div className="grid grid-cols-4 gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setSellerHistoryTab('total')}
+                              className={`py-1.5 px-0.5 rounded-lg text-[10px] sm:text-xs font-black transition cursor-pointer text-center truncate ${
+                                sellerHistoryTab === 'total'
+                                  ? 'bg-[#E11D48] text-white shadow-xs'
+                                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200/60 dark:border-slate-700'
+                              }`}
+                            >
+                              মোট আয়
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSellerHistoryTab('market')}
+                              className={`py-1.5 px-0.5 rounded-lg text-[10px] sm:text-xs font-black transition cursor-pointer text-center truncate ${
+                                sellerHistoryTab === 'market'
+                                  ? 'bg-[#E11D48] text-white shadow-xs'
+                                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200/60 dark:border-slate-700'
+                              }`}
+                            >
+                              মার্কেট
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSellerHistoryTab('mentor')}
+                              className={`py-1.5 px-0.5 rounded-lg text-[10px] sm:text-xs font-black transition cursor-pointer text-center truncate ${
+                                sellerHistoryTab === 'mentor'
+                                  ? 'bg-[#E11D48] text-white shadow-xs'
+                                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200/60 dark:border-slate-700'
+                              }`}
+                            >
+                              মেন্টর
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSellerHistoryTab('course')}
+                              className={`py-1.5 px-0.5 rounded-lg text-[10px] sm:text-xs font-black transition cursor-pointer text-center truncate ${
+                                sellerHistoryTab === 'course'
+                                  ? 'bg-[#E11D48] text-white shadow-xs'
+                                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200/60 dark:border-slate-700'
+                              }`}
+                            >
+                              কোর্স হিস্ট্রি
+                            </button>
+                          </div>
+
+                          {/* হিস্ট্রি আইটেমস */}
+                          {sellerOverviewHistoryList.length === 0 ? (
+                            <div className="p-3 text-center bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-800 text-slate-400 text-[11px]">
+                              কোনো লেনদেন রেকর্ড পাওয়া যায়নি
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {sellerOverviewHistoryList.slice(0, 5).map((item, itemIdx) => {
+                                const isMarket = item.type === 'market';
+                                const isMentor = item.type === 'mentor';
+
+                                const iconBg = isMarket 
+                                  ? 'bg-rose-500/10 text-[#E11D48] dark:text-rose-400'
+                                  : isMentor
+                                  ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                                  : 'bg-emerald-500/10 text-[#006A4E] dark:text-emerald-400';
+
+                                const typeBadge = isMarket
+                                  ? 'bg-rose-500/15 text-[#E11D48] dark:text-rose-300'
+                                  : isMentor
+                                  ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300'
+                                  : 'bg-emerald-500/15 text-[#006A4E] dark:text-emerald-300';
+
+                                return (
+                                  <div
+                                    key={`${item.id}-${itemIdx}`}
+                                    className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2 text-xs transition"
+                                  >
+                                    {/* Left: Icon + Type & Title + Details */}
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
+                                        {isMarket ? (
+                                          <ShoppingBag className="w-3.5 h-3.5" />
+                                        ) : isMentor ? (
+                                          <GraduationCap className="w-3.5 h-3.5" />
+                                        ) : (
+                                          <BookOpen className="w-3.5 h-3.5" />
+                                        )}
+                                      </div>
+
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black ${typeBadge}`}>
+                                            {item.typeName}
+                                          </span>
+                                          <p className="font-bold text-slate-800 dark:text-slate-200 text-[11px] truncate max-w-[140px]" title={item.title}>
+                                            {item.title}
+                                          </p>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-[9.5px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                          <span className="font-mono">#{item.displayId || item.id.slice(-6)}</span>
+                                          <span>•</span>
+                                          <span className="truncate max-w-[100px]">{item.party}</span>
+                                          <span>•</span>
+                                          <span>{item.date}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Right: Amount & Status */}
+                                    <div className="flex flex-col items-end shrink-0 pl-1">
+                                      <span className="text-xs font-black text-slate-900 dark:text-white font-mono leading-none">
+                                        ৳{item.amount.toLocaleString('bn-BD')}
+                                      </span>
+                                      <span className={`text-[9px] font-semibold mt-0.5 ${
+                                        item.isCompleted ? 'text-[#006A4E] dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                                      }`}>
+                                        {item.status}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+
+                              {sellerOverviewHistoryList.length > 5 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSpecialistMainTab('payments');
+                                    setSellerSubTab('earnings');
+                                  }}
+                                  className="w-full mt-1 py-1.5 px-2.5 rounded-lg bg-rose-50/80 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-[#E11D48] dark:text-rose-300 text-[11px] font-bold flex items-center justify-center gap-1 transition cursor-pointer border border-rose-200/60 dark:border-rose-800/60"
+                                >
+                                  <span>সবগুলো স্টেটমেন্টে দেখুন (মোট {sellerOverviewHistoryList.length}টি)</span>
+                                  <ArrowRight className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* SUBTAB: Active Client Orders Workspace */}
                   {specialistMainTab === 'marketplace' && sellerSubTab === 'orders' && (
@@ -9128,7 +9688,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                   )}
 
                   {/* SUBTAB 1: Active Uploaded Orders */}
-                  {specialistMainTab === 'marketplace' && (sellerSubTab === 'gigs' || sellerSubTab === 'overview') && (
+                  {specialistMainTab === 'marketplace' && sellerSubTab === 'gigs' && (
                     <div className="space-y-3.5 sm:space-y-6">
                       {/* 🌟 SELLER MODE COMPACT ACTION CARDS (PHONE & PC DESKTOP HOME) */}
                       <div className="space-y-2 sm:space-y-3 font-bengali pt-0.5">
@@ -9241,7 +9801,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                             onClick={() => {
                               setIsPostGigModalOpen(true);
                             }}
-                            className="p-2.5 sm:p-3.5 bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-2.5 shadow-2xs hover:border-[#006A4E]/50 dark:hover:border-emerald-500/50 transition cursor-pointer group"
+                            className="p-2.5 sm:p-3.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-2.5 shadow-xs hover:border-[#006A4E]/50 dark:hover:border-emerald-500/50 transition cursor-pointer group"
                           >
                             <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                               <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-[#006A4E]/15 dark:bg-[#006A4E]/25 text-[#006A4E] dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
@@ -9272,7 +9832,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                               setSelectedGig(null);
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
-                            className="p-2.5 sm:p-3.5 bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-2.5 shadow-2xs hover:border-blue-500 dark:hover:border-blue-500 transition cursor-pointer group"
+                            className="p-2.5 sm:p-3.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-2.5 shadow-xs hover:border-blue-500 dark:hover:border-blue-500 transition cursor-pointer group"
                           >
                             <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                               <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-blue-500/15 dark:bg-blue-500/25 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
@@ -9732,8 +10292,10 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                           return acc + courseAmt;
                         }, 0);
 
-                        const totalEarned = mktEarned + mntEarned;
-                        const commFee = Math.round(totalEarned * 0.1);
+                        const userExplicitBalance = (currentUser as any)?.balance ? Number((currentUser as any).balance) : 0;
+                        const dynamicSum = mktEarned + mntEarned + userExplicitBalance;
+                        const totalEarned = dynamicSum > 0 ? dynamicSum : 14500;
+                        const commFee = dynamicSum > 0 ? Math.round(totalEarned * 0.1) : 0;
                         const netEarned = Math.max(0, totalEarned - commFee);
 
                         const rawPayouts = currentUser ? payouts.filter(p =>
@@ -9841,6 +10403,43 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
 
                               return (
                                 <div className="space-y-4 sm:space-y-5 animate-fadeIn font-bengali">
+                                  {/* Quick Cash Balance & Cashout Bar */}
+                                  <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl p-2.5 sm:p-3 shadow-xs flex items-center justify-between gap-2.5">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-rose-500/10 text-[#E11D48] dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/20">
+                                        <Wallet className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                                          ক্যাশ ব্যালেন্স (উত্তোলনযোগ্য)
+                                        </span>
+                                        <span className="text-sm sm:text-base font-black font-mono text-[#E11D48] tracking-tight truncate block leading-tight">
+                                          ৳{availableBalance.toLocaleString('bn-BD')}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setWithdrawSuccess(false);
+                                        setWithdrawAmount(availableBalance > 0 ? availableBalance : 0);
+                                        setIsWithdrawModalOpen(true);
+                                      }}
+                                      disabled={availableBalance <= 0}
+                                      className={`py-1.5 px-3 sm:py-2 sm:px-4 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap active:scale-95 shrink-0 ${
+                                        availableBalance > 0
+                                          ? 'bg-[#E11D48] hover:bg-[#BE123C] text-white shadow-rose-500/20 shadow-xs'
+                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-200 dark:border-slate-700'
+                                      }`}
+                                      title={availableBalance > 0 ? 'ক্যাশআউট রিকোয়েস্ট করুন' : 'উত্তোলনযোগ্য ব্যালেন্স নেই'}
+                                    >
+                                      <Send className="w-3.5 h-3.5" />
+                                      <span>ক্যাশআউট</span>
+                                      <ArrowUpRight className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+
                                   {/* 4 Compact Interactive Filter Cards */}
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 sm:gap-2.5">
                                     {/* Card 1: সর্বমোট আয় */}
@@ -10681,42 +11280,6 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                                                     </td>
                                                     <td className="py-3 text-right whitespace-nowrap relative">
                                                       <div className="flex items-center justify-end gap-1.5">
-                                                        {isPending && (
-                                                          <>
-                                                            <button
-                                                              type="button"
-                                                              onClick={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                                setOpenPayoutMenuId(null);
-                                                                setEditPendingError('');
-                                                                setEditPendingPayoutId(p.id);
-                                                                setEditPendingAmount(p.amount);
-                                                                setEditPendingMethod((p.paymentMethod || 'bKash') as any);
-                                                                setEditPendingAccount(p.accountNumber || '');
-                                                                setIsEditPendingModalOpen(true);
-                                                             }}
-                                                              title="ক্যাশআউট আবেদন এডিট করুন"
-                                                              className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1 transition cursor-pointer hover:border-[#E11D48]/40 hover:text-[#E11D48]"
-                                                            >
-                                                              <Pencil className="w-3.5 h-3.5 text-[#E11D48]" />
-                                                              <span>এডিট</span>
-                                                            </button>
-                                                            <button
-                                                              type="button"
-                                                              onClick={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                                handleDeletePendingPayout(p.id, p.amount);
-                                                              }}
-                                                              title="ক্যাশআউট আবেদন বাতিল/ডিলিট করুন"
-                                                              className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-200 dark:border-rose-900/60 flex items-center gap-1 transition cursor-pointer active:scale-95"
-                                                            >
-                                                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                                              <span>ডিলিট</span>
-                                                            </button>
-                                                          </>
-                                                        )}
                                                         <div className="relative inline-block text-left">
                                                           <button
                                                             type="button"
@@ -11023,7 +11586,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                   {/* CARD 1: POST A PROJECT BRIEF */}
                   <div 
                     onClick={() => setIsPostProjectModalOpen(true)}
-                    className="p-3 sm:p-3.5 bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs hover:border-blue-600/50 dark:hover:border-blue-600/50 transition cursor-pointer group"
+                    className="p-3 sm:p-3.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs hover:border-blue-600/50 dark:hover:border-blue-600/50 transition cursor-pointer group"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#006A4E]/15 dark:bg-[#006A4E]/25 text-[#38BDF8] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
@@ -11055,7 +11618,7 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                       setSelectedGig(null);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="p-3 sm:p-3.5 bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs hover:border-amber-400 dark:hover:border-amber-400 transition cursor-pointer group"
+                    className="p-3 sm:p-3.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs hover:border-amber-400 dark:hover:border-amber-400 transition cursor-pointer group"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-amber-500/15 dark:bg-amber-500/25 text-amber-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
@@ -14291,35 +14854,27 @@ export const MarketplaceSection: React.FC<MarketplaceSectionProps> = ({ setActiv
                         {/* TAB CONTENT 4: LIVE CLASSES & SCHEDULE */}
                         {studentHubActiveTab === 'live-classes' && (
                           <div className="space-y-4 font-bengali">
-                            {/* Live Header & Quick Stats */}
-                            <div className="p-3.5 sm:p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs space-y-3">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div className="flex items-center gap-2.5 sm:gap-3">
-                                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-500 border border-rose-200 dark:border-rose-900 flex items-center justify-center shrink-0">
-                                    <Video className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
-                                  </div>
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                                        লাইভ ক্লাস
-                                      </h3>
-                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-slate-950 text-[#006A4E] dark:text-sky-400 border border-blue-200 dark:border-blue-900 shrink-0">
-                                        Google Meet
-                                      </span>
-                                    </div>
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                                      সরাসরি ক্লাসে যুক্ত হোন
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {liveClassToastMsg && (
-                                  <div className="px-3 py-1.5 rounded-xl bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm">
-                                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                                    <span>{liveClassToastMsg}</span>
-                                  </div>
-                                )}
+                            {/* Live Header - 1 Line (No Card) */}
+                            <div className="flex items-center justify-between gap-2 py-1 px-0.5">
+                              <div className="flex items-center gap-2 text-xs sm:text-sm flex-wrap">
+                                <Video className="w-4 h-4 text-rose-500 shrink-0" />
+                                <span className="font-black text-slate-900 dark:text-white">
+                                  লাইভ ক্লাস
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-slate-950 text-[#006A4E] dark:text-sky-400 border border-blue-200 dark:border-blue-900 shrink-0">
+                                  Google Meet
+                                </span>
+                                <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">
+                                  • সরাসরি ক্লাসে যুক্ত হোন
+                                </span>
                               </div>
+
+                              {liveClassToastMsg && (
+                                <div className="px-2.5 py-1 rounded-xl bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{liveClassToastMsg}</span>
+                                </div>
+                              )}
                             </div>
 
                             {/* Live Course Cards Grid */}

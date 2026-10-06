@@ -149,27 +149,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     if (initialTab) {
       setActiveTabState(initialTab);
     }
-    if (showAllStacked) {
-      let targetId: string | null = null;
-      if (initialTab === 'courses') {
-        targetId = 'mentor-section-courses';
-      } else if (initialTab === 'live_classes') {
-        targetId = 'mentor-section-live';
-      } else if (initialTab === 'submissions') {
-        if (initialStatusFilter === 'review') {
-          targetId = 'mentor-section-review';
-        } else {
-          targetId = 'mentor-section-new';
-        }
-      }
-      if (targetId) {
-        setTimeout(() => {
-          const el = document.getElementById(targetId!);
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 150);
-      }
-    }
-  }, [initialTab, initialStatusFilter, showAllStacked]);
+  }, [initialTab]);
 
   useEffect(() => {
     if (openCreateAssignmentModal) {
@@ -1241,36 +1221,50 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           </div>
         </div>
 
-        {/* Actions: Exactly 2 clean, responsive buttons in 2-color theme */}
-        <div className="p-3 sm:p-4 pt-0 grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {/* Actions: 'অ্যাসাইনমেন্ট দিন' above 'মডিউল আপলোড' */}
+        <div className="p-3 sm:p-4 pt-0 space-y-2">
           <button
             type="button"
             onClick={() => {
-              setSelectedManageCourseId(course.id);
-              setManageModalTab('upload');
-              if (course.modules && course.modules.length > 0) {
-                setLessonModuleId('');
-              } else {
-                setLessonModuleId('new');
-              }
+              setSelectedCourseId(course.id);
+              setShowCreateModal(true);
             }}
-            className="py-2.5 px-3 bg-[#006A4E] hover:bg-[#00543D] active:scale-[0.99] text-white font-bold text-xs sm:text-sm rounded-lg shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+            className="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold text-xs sm:text-sm rounded-lg shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
           >
-            <Video className="w-4 h-4 text-white shrink-0" />
-            <span className="truncate">মডিউল আপলোড</span>
+            <PlusCircle className="w-4 h-4 text-white shrink-0" />
+            <span className="truncate">অ্যাসাইনমেন্ট দিন</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedPreviewCourse(course);
-              if (onViewCourse) onViewCourse(course.id);
-            }}
-            className="py-2.5 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-[0.99] text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 transition cursor-pointer flex items-center justify-center gap-1.5"
-          >
-            <Eye className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
-            <span className="truncate">প্রিভিউ দেখুন →</span>
-          </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedManageCourseId(course.id);
+                setManageModalTab('upload');
+                if (course.modules && course.modules.length > 0) {
+                  setLessonModuleId('');
+                } else {
+                  setLessonModuleId('new');
+                }
+              }}
+              className="py-2.5 px-3 bg-[#006A4E] hover:bg-[#00543D] active:scale-[0.99] text-white font-bold text-xs sm:text-sm rounded-lg shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Video className="w-4 h-4 text-white shrink-0" />
+              <span className="truncate">মডিউল আপলোড</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedPreviewCourse(course);
+                if (onViewCourse) onViewCourse(course.id);
+              }}
+              className="py-2.5 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-[0.99] text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm rounded-lg border border-slate-200 dark:border-slate-700 transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Eye className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+              <span className="truncate">প্রিভিউ দেখুন →</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -2211,15 +2205,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 <Settings className="w-4 h-4 text-sky-400" />
                 <span>সেটিংস</span>
               </button>
-
-              {/* Create Assignment CTA */}
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="w-full sm:w-auto px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-[#006A4E] to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm rounded-xl sm:rounded-2xl shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0 hover:scale-105 active:scale-95"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>নতুন অ্যাসাইনমেন্ট দিন</span>
-              </button>
             </div>
           </div>
 
@@ -2572,14 +2557,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             {/* ৩. রিভিউ কাজ (Section 3: Review Submissions - 9টি) */}
             {activeSection === 'review' && (
               <div id="mentor-section-review" className="space-y-4 scroll-mt-24">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-amber-500 shrink-0" />
-                    <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                      রিভিউ কাজ
+                <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <Clock className="w-4.5 h-4.5 text-amber-500 shrink-0" />
+                    <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                      রিভিউ
                     </h2>
-                    <span className="text-xs px-2.5 py-0.5 rounded-full font-black bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
-                      {reviewSubmissions.length || 9}টি
+                    <span className="text-xs px-2.5 py-0.5 rounded-full font-black bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 shrink-0">
+                      {reviewSubmissions.length || 7}টি
                     </span>
                   </div>
                   {reviewSubmissions.length > 0 && (
@@ -2592,7 +2577,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                           setTimeout(() => setLiveToastMsg(''), 3000);
                         }
                       }}
-                      className="py-1.5 px-3.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs shrink-0"
+                      className="py-1.5 px-2.5 sm:px-3.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs shrink-0"
                       title="সবগুলো রিভিউ কাজ একসাথে তালিকা থেকে মুছুন"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
